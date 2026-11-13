@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- antenna dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,38 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <!-- signal arcs -->
+    <path
+        android:pathData="M40,52 A19,19 0 0 1 68,52"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M31,60 A31,31 0 0 1 77,60"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round" />
+    <!-- speaker body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,66 h36 a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-36 a4,4 0 0 1 -4,-4 v-10 a4,4 0 0 1 4,-4 z" />
+</vector>

@@ -1,0 +1,17 @@
+# Build outputs
+build/
+*.apk
+*.aab
+
+# Gradle / IDE
+.gradle/
+local.properties
+.idea/
+*.iml
+.kotlin/
+
+# Local toolchain (Android SDK, Gradle dist & caches — 2+ GB, machine-specific)
+dev/
+
+# OS junk
+.DS_Store
