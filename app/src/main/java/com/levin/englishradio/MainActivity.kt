@@ -8,6 +8,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -105,6 +107,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
 
     private var controller: MediaController? = null
     private var reconnectAttempts = 0
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     private val cmdPlay = SessionCommand(RadioService.ACTION_PLAY_STATION, Bundle.EMPTY)
     private val cmdSetTimer = SessionCommand(RadioService.ACTION_SET_SLEEP_TIMER, Bundle.EMPTY)
@@ -119,6 +122,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         connect()
+        registerNetworkCallback()
         // 1 Hz clock so the countdown chip recomposes.
         viewModelScope.launch {
             while (true) {
@@ -259,6 +263,7 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
         val c = controller ?: return
         val args = Bundle().apply { putInt(RadioService.EXTRA_MODE, 1) }
         c.sendCustomCommand(cmdSetNetwork, args)
+        _state.update { it.copy(networkMode = 1) }
         fetchTimer()
     }
 
@@ -285,9 +290,69 @@ class RadioViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        unregisterNetworkCallback()
         controller?.release()
         controller = null
         super.onCleared()
+    }
+
+    /** Listen for system network changes so the chip reflects the real route. */
+    private fun registerNetworkCallback() {
+        val cm = getApplication<Application>()
+            .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) {
+                super.onAvailable(network)
+                refreshNetworkMode()
+            }
+            override fun onLost(network: android.net.Network) {
+                super.onLost(network)
+                refreshNetworkMode()
+            }
+            override fun onCapabilitiesChanged(
+                network: android.net.Network,
+                networkCapabilities: NetworkCapabilities,
+            ) {
+                super.onCapabilitiesChanged(network, networkCapabilities)
+                refreshNetworkMode()
+            }
+        }
+        try {
+            cm.registerDefaultNetworkCallback(networkCallback!!)
+        } catch (e: Exception) {
+            // permissions error or older API — non-critical
+        }
+    }
+
+    private fun unregisterNetworkCallback() {
+        val cm = try {
+            getApplication<Application>()
+                .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        } catch (e: Exception) {
+            return
+        }
+        val cb = networkCallback
+        if (cb != null) {
+            try { cm.unregisterNetworkCallback(cb) } catch (e: Exception) { }
+        }
+        networkCallback = null
+    }
+
+    /** Ask the service for its current effective network mode and update the UI. */
+    private fun refreshNetworkMode() {
+        val c = controller ?: return
+        val future = c.sendCustomCommand(cmdGetTimer, Bundle.EMPTY)
+        future.addListener({
+            try {
+                val result = future.get()
+                val mode = result.extras?.getInt(RadioService.EXTRA_NETWORK_MODE, -1) ?: -1
+                if (mode >= 0) {
+                    _state.update { it.copy(networkMode = mode) }
+                }
+            } catch (e: Exception) {
+                // ignore
+            }
+        }, { command -> command.run() })
     }
 }
 
